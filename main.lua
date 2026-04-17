@@ -1,59 +1,51 @@
--- [[ CALIXTRO STEALTH CORE ]]
+-- [[ CALIXTRO LITE - RIVALS UNLOCKER ]]
+-- Optimized for 2GB RAM / N2940
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService") -- Used for saving settings locally
-local player = game:GetService("Players").LocalPlayer
+local lp = Players.LocalPlayer
 
--- 1. THE WRAP UNLOCKER (The "Spoof")
-local function unlockSkins()
-    -- We search for modules named "Skin", "WeaponData", or "WrapConfig"
-    for _, v in pairs(ReplicatedStorage:GetDescendants()) do
-        if v:IsA("ModuleScript") and (v.Name:find("Skin") or v.Name:find("Wrap")) then
-            local data = require(v)
-            if type(data) == "table" then
-                for _, skin in pairs(data) do
-                    if type(skin) == "table" then
-                        skin.Unlocked = true
-                        skin.Owned = true
-                        skin.Price = 0 -- Makes them free if it's a shop system
-                    end
-                end
-            end
-        end
+-- 1. ULTRALIGHT BYPASS (No getgc loop)
+local mt = getrawmetatable(game)
+local oldnc = mt.__namecall
+setreadonly(mt, false)
+
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    -- Block Kicks and Anti-Cheat Alerts
+    if (method == "Kick" or method == "kick") and self == lp then return nil end
+    if method == "FireServer" and (tostring(self) == "ClientAlert" or tostring(self) == "CheckAC") then
+        return nil 
     end
-    print("CaliXtro: All Wraps Spoofed to 'Owned'")
-end
-
--- 2. THE LOCAL SAVING SYSTEM (2GB RAM Friendly)
--- Since we want it to save when they leave, we use a local JSON file
-local SAVE_FILE = "CaliXtro_Config.json"
-
-local function saveSelection(weapon, skin)
-    local data = { [weapon] = skin }
-    -- writefile is a command used by most executors
-    writefile(SAVE_FILE, HttpService:JSONEncode(data))
-end
-
-local function loadSelection()
-    if isfile(SAVE_FILE) then
-        local data = HttpService:JSONDecode(readfile(SAVE_FILE))
-        return data
-    end
-    return {}
-end
-
--- 3. AUTO-APPLIER
--- This waits for a gun to be added to your character and forces the skin
-player.CharacterAdded:Connect(function(char)
-    char.ChildAdded:Connect(function(child)
-        if child:IsA("Tool") then
-            local savedSkins = loadSelection()
-            if savedSkins[child.Name] then
-                -- This is where your Skin Changer logic from before goes!
-                print("CaliXtro: Auto-applying " .. savedSkins[child.Name])
-            end
-        end
-    end)
+    return oldnc(self, ...)
 end)
+setreadonly(mt, true)
 
--- RUN INITIAL BOOT
-unlockSkins()
+-- 2. DIRECT MODULE HOOKING (Efficient)
+local function applyHooks()
+    local Modules = ReplicatedStorage:WaitForChild("Modules", 5)
+    if not Modules then return end
+
+    local CosmeticLib = require(Modules:WaitForChild("CosmeticLibrary"))
+    local ItemLib = require(Modules:WaitForChild("ItemLibrary"))
+
+    -- Force ownership to TRUE for everything
+    CosmeticLib.OwnsCosmetic = function() return true end
+    CosmeticLib.OwnsCosmeticNormally = function() return true end
+    CosmeticLib.OwnsCosmeticUniversally = function() return true end
+    
+    print("CaliXtro: Skins Unlocked (Direct Hook)")
+end
+
+-- 3. STEALTH AUTO-SAVE (Uses Workspace)
+local savePath = "CaliXtro_Rivals.json"
+
+local function saveSkins(data)
+    if writefile then
+        writefile(savePath, game:GetService("HttpService"):JSONEncode(data))
+    end
+end
+
+-- Run
+task.spawn(applyHooks)
