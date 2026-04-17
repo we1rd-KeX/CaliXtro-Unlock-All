@@ -1,51 +1,40 @@
--- [[ CALIXTRO LITE - RIVALS UNLOCKER ]]
--- Optimized for 2GB RAM / N2940
-repeat task.wait() until game:IsLoaded()
+-- [[ CALIXTRO ULTRA-LITE ]]
+if not game:IsLoaded() then game.Loaded:Wait() end
 
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local lp = Players.LocalPlayer
+local Modules = ReplicatedStorage:WaitForChild("Modules", 20)
 
--- 1. ULTRALIGHT BYPASS (No getgc loop)
-local mt = getrawmetatable(game)
-local oldnc = mt.__namecall
-setreadonly(mt, false)
-
-mt.__namecall = newcclosure(function(self, ...)
-    local method = getnamecallmethod()
-    -- Block Kicks and Anti-Cheat Alerts
-    if (method == "Kick" or method == "kick") and self == lp then return nil end
-    if method == "FireServer" and (tostring(self) == "ClientAlert" or tostring(self) == "CheckAC") then
+-- Direct Bypass (No Namecall, No Metatables = No Lag)
+local function bypass()
+    local lp = game:GetService("Players").LocalPlayer
+    local old; old = hookfunction(lp.Kick, function(self, reason)
         return nil 
-    end
-    return oldnc(self, ...)
-end)
-setreadonly(mt, true)
+    end)
+end
 
--- 2. DIRECT MODULE HOOKING (Efficient)
-local function applyHooks()
-    local Modules = ReplicatedStorage:WaitForChild("Modules", 5)
-    if not Modules then return end
-
+-- Direct Skin Injection (Targeting exact modules only)
+local function unlock()
     local CosmeticLib = require(Modules:WaitForChild("CosmeticLibrary"))
     local ItemLib = require(Modules:WaitForChild("ItemLibrary"))
+    local DataCtrl = require(game:GetService("Players").LocalPlayer.PlayerScripts.Controllers:WaitForChild("PlayerDataController"))
 
-    -- Force ownership to TRUE for everything
-    CosmeticLib.OwnsCosmetic = function() return true end
-    CosmeticLib.OwnsCosmeticNormally = function() return true end
-    CosmeticLib.OwnsCosmeticUniversally = function() return true end
+    -- The "Heavy" logic is removed. We just flip the logic gates.
+    local function forceTrue() return true end
+
+    CosmeticLib.OwnsCosmetic = forceTrue
+    CosmeticLib.OwnsCosmeticNormally = forceTrue
+    CosmeticLib.OwnsCosmeticUniversally = forceTrue
     
-    print("CaliXtro: Skins Unlocked (Direct Hook)")
-end
-
--- 3. STEALTH AUTO-SAVE (Uses Workspace)
-local savePath = "CaliXtro_Rivals.json"
-
-local function saveSkins(data)
-    if writefile then
-        writefile(savePath, game:GetService("HttpService"):JSONEncode(data))
+    -- Force the inventory data to act as if it's full
+    local oldGet = DataCtrl.Get
+    DataCtrl.Get = function(self, key)
+        if key == "CosmeticInventory" then return setmetatable({}, {__index = forceTrue}) end
+        return oldGet(self, key)
     end
+    
+    print("CaliXtro: Mobile Ready")
 end
 
--- Run
-task.spawn(applyHooks)
+-- Run in separate threads to prevent screen freezing
+task.spawn(bypass)
+task.spawn(unlock)
