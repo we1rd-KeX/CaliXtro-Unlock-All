@@ -1,40 +1,44 @@
--- [[ CALIXTRO ULTRA-LITE ]]
-if not game:IsLoaded() then game.Loaded:Wait() end
+-- TCBHP Standalone Unlocker [April 2026]
+-- Targets Skins, Wraps, and Finisher attributes for the latest update
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Modules = ReplicatedStorage:WaitForChild("Modules", 20)
 
--- Direct Bypass (No Namecall, No Metatables = No Lag)
-local function bypass()
-    local lp = game:GetService("Players").LocalPlayer
-    local old; old = hookfunction(lp.Kick, function(self, reason)
-        return nil 
-    end)
-end
+local function UnlockItems()
+    -- Common paths for Rivals and other modern shooters
+    local targets = {
+        ReplicatedStorage:FindFirstChild("ItemData"),
+        ReplicatedStorage:FindFirstChild("Skins"),
+        ReplicatedStorage:FindFirstChild("Wraps"),
+        ReplicatedStorage:FindFirstChild("Cosmetics")
+    }
 
--- Direct Skin Injection (Targeting exact modules only)
-local function unlock()
-    local CosmeticLib = require(Modules:WaitForChild("CosmeticLibrary"))
-    local ItemLib = require(Modules:WaitForChild("ItemLibrary"))
-    local DataCtrl = require(game:GetService("Players").LocalPlayer.PlayerScripts.Controllers:WaitForChild("PlayerDataController"))
-
-    -- The "Heavy" logic is removed. We just flip the logic gates.
-    local function forceTrue() return true end
-
-    CosmeticLib.OwnsCosmetic = forceTrue
-    CosmeticLib.OwnsCosmeticNormally = forceTrue
-    CosmeticLib.OwnsCosmeticUniversally = forceTrue
-    
-    -- Force the inventory data to act as if it's full
-    local oldGet = DataCtrl.Get
-    DataCtrl.Get = function(self, key)
-        if key == "CosmeticInventory" then return setmetatable({}, {__index = forceTrue}) end
-        return oldGet(self, key)
+    for _, folder in pairs(targets) do
+        if folder then
+            for _, item in pairs(folder:GetDescendants()) do
+                -- 1. Standard BoolValue Unlock (Old System)
+                if item:IsA("BoolValue") and (item.Name == "Owned" or item.Name == "Unlocked") then
+                    item.Value = true
+                
+                -- 2. Attribute Unlock (Update 19 / Modern System)
+                elseif item:IsA("Configuration") or item:IsA("Folder") or item:IsA("Model") then
+                    if item:GetAttribute("Owned") ~= nil then
+                        item:SetAttribute("Owned", true)
+                    end
+                    if item:GetAttribute("Unlocked") ~= nil then
+                        item:SetAttribute("Unlocked", true)
+                    end
+                end
+            end
+        end
     end
-    
-    print("CaliXtro: Mobile Ready")
 end
 
--- Run in separate threads to prevent screen freezing
-task.spawn(bypass)
-task.spawn(unlock)
+-- Run once on execute, then every 5 seconds to catch new shop rotations
+task.spawn(function()
+    while true do
+        UnlockItems()
+        task.wait(5) -- Long wait time to save CPU usage on your N2940
+    end
+end)
+
+print("TCBHP: Skins and Wraps Unlocked.")
